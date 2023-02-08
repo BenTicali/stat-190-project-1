@@ -40,8 +40,6 @@ unique(wo$wo_start_date)
 file_list = list.files("Fault Codes Time Series/")
 merged_data = data.frame()
 
-
-
 for(i in file_list) {
   file_path = paste0("Fault Codes Time Series/", i, sep = "")
   if(file.info(file_path)$size > 0){
@@ -50,8 +48,10 @@ for(i in file_list) {
   }
 }
 
+# Add column names to the Fault Code Time Series data
 colnames(merged_data) = c("Turbine_id", "Time_Stamp", "Date", 'Fault_Code', 'OEM_Status_Code', 'Error_Description', 'Error_Origin')
 
+# Cleaning the date columns
 merged_data$Time_Stamp = ymd_hms(merged_data$Time_Stamp)
 merged_data$Date = ymd(merged_data$Date)
 
@@ -61,13 +61,10 @@ merged_data %>% filter(Error_Origin != "Informational") %>% ggplot() +
 table(merged_data$Error_Origin)
 
 
-
+# sorting data by Time and removing any duplicate fault codes on the same day to create daily Fault Events
 sorted <- merged_data[order(merged_data$Time_Stamp),]
 
-
-
 events <- sorted[-c(which(duplicated(sorted[c('Turbine_id', 'Date', 'Fault_Code')]))),]
-
 events$Date2 <- ymd(events$Date)
 
 difftime(events$Date[1], events$Date[2], units = 'days')
@@ -75,12 +72,11 @@ difftime(events$Date[1], events$Date[2], units = 'days')
 as.numeric(events$Date[1] - events$Date[2])[1]
 
 # sort by turbine, date (order of line by line)
-
 # order events by turbine, date, fault code
 events2 <- events[order(events$Turbine_id, events$Date, events$Fault_Code),]
 events2$time_difference = NA
 
-# 
+# removes Fault Events that are on adjacent days
 for(i in 2:length(events2$Date)){
   if(events2$Turbine_id[i] == events2$Turbine_id[i-1] && events2$Fault_Code[i] == events2$Fault_Code[i-1]){
     events2$time_difference[i] = as.numeric(difftime(events2$Date[i], events2$Date[i-1], 'days'))
@@ -112,13 +108,11 @@ events2 %>% filter(Error_Origin != 'Informational') %>%
   theme(axis.text.x = element_text(angle = 90)) + ggtitle("Count of Error Origin, grouped by turbine")
 
 
-
+# Importing gearbox bearing temperatures
 gearbox_1_files = list.files("Gearbox HS Bearing Temp Part 1/")
 gearbox_2_files = list.files("Gearbox HS Bearing Temp Part 2/")
 gearbox_3_files = list.files("Gearbox HS Bearing Temp Part 3/")
 gearbox_merged = data.frame()
-
-
 
 for(i in gearbox_1_files) {
   file_path = paste0("Gearbox HS Bearing Temp Part 1/", i, sep = "")
@@ -144,6 +138,7 @@ for(i in gearbox_3_files) {
   }
 }
 
+# importing Gearbox oil temp
 gearbox_4_files = list.files("Gearbox Oil Temperature/")
 
 for(i in gearbox_4_files) {
@@ -154,6 +149,7 @@ for(i in gearbox_4_files) {
   }
 }
 
+# naming gearbox columns
 colnames(gearbox_merged) = c("Turbine_id", "Time_Stamp", "Date", "Temp", "Type")
 
 table(gearbox_merged$Type)
