@@ -82,4 +82,10 @@ ggplot(data = subset(new, Turbine_id == 'Turbine 7')) +
    facet_wrap(~fault)
 
 
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = wind_speed, y = generator_rpm_, color = power)) +
+   theme_bw() +
+   facet_wrap(~fault)
+
+
 
