@@ -48,3 +48,38 @@ ggplot(data = subset(agg, Turbine_id == 'Turbine 7'), aes(x = power, y = gearbox
    scale_fill_gradient(low="yellow",high="darkblue",trans="log10")
 
 
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = generator_rpm_, y = gearbox_oil_temperature, color = power)) +
+   theme_bw() +
+   facet_wrap(~fault) +
+   labs(x = "Generator RPM", y = "Gearbox Oil Temperature (Celcius)") +
+   ggtitle("Turbine 7: Oil Temperature by Generator RPM")
+
+
+
+
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = generator_rpm_, y = hydraulic_pressure_, color = power)) +
+   theme_bw() +
+   facet_wrap(~fault)
+
+
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = power, y = hydraulic_pressure_, color = generator_rpm_)) +
+   theme_bw() +
+   facet_wrap(~fault)
+
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = gearbox_oil_temperature, y = hydraulic_pressure_, color = power)) +
+   theme_bw() +
+   facet_wrap(~fault)
+
+
+
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = power, y = gearbox_hs_bearing_temp_, color = hydraulic_pressure_)) +
+   theme_bw() +
+   facet_wrap(~fault)
+
+
+
