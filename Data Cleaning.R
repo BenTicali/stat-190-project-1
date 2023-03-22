@@ -415,7 +415,7 @@ fwrite(aggregated, file = 'C:/Users/owenm/Downloads/STAT 190/Class Data/Aggregat
 
 
 
-
+# Some of this is duplicate data, but all of the code below is pasted together for ease of understanding
 
 merged_data$isfailure = ifelse(merged_data$Error_Description %in% c('Grid Filter Current Overload',
                                                                      'Hs-Gen Gearbearing Superheated',
@@ -470,7 +470,7 @@ new$fault = ifelse(is.na(new$fault),0,new$fault)
 new$failuretype = ifelse(is.na(new$failuretype),'Not an Error',new$failuretype)
 
 
-
+#This is the end of the code block that goes all together
 
 
 
