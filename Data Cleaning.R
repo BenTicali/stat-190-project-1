@@ -417,7 +417,57 @@ fwrite(aggregated, file = 'C:/Users/owenm/Downloads/STAT 190/Class Data/Aggregat
 
 
 
+merged_data$isfailure = ifelse(merged_data$Error_Description %in% c('Grid Filter Current Overload',
+                                                                     'Hs-Gen Gearbearing Superheated',
+                                                                     'Ups-Failure',
+                                                                     'Ups Bypass Error', 
+                                                                     'Gear Oil Temperature High', 
+                                                                     'Gear Oil Pressure Too High/Low',
+                                                                     'Ims-Gen Gearbearing Temp Too High',
+                                                                     'Gearoil Level Too Low',
+                                                                     'Converter Tripped, Auto Start',
+                                                                     'Mainbreaker Cut Out', 
+                                                                     'Grid Filter Current Overload',
+                                                                     'Osc. In Gen Speed', 
+                                                                     'Slip Ring Error', 
+                                                                     'Genrpm/Srsg Speed Error'),1,0)
 
+
+merged_data$failuretype = case_when(merged_data$Error_Description == 'Grid Filter Current Overload' ~ 'Grid Filter Current Overlad',
+                                    merged_data$Error_Description == 'Hs-Gen Gearbearing Superheated' ~ 'Hs-Gen Gearbearing Superheated',
+                                    merged_data$Error_Description == 'Ups-Failure' ~ 'Ups_Failure',
+                                    merged_data$Error_Description == 'Ups Bypass Error' ~ 'Ups Bypass Error',
+                                    merged_data$Error_Description == 'Gear Oil Temperature High' ~ 'Gear Oil Temperature High',
+                                    merged_data$Error_Description == 'Gear Oil Pressure Too High/Low' ~ 'Gear Oil Pressure Too High/Low',
+                                    merged_data$Error_Description == 'Ims-Gen Gearbearing Temp Too High' ~ 'Ims-Gen Gearbearing Temp Too High',
+                                    merged_data$Error_Description == 'Gearoil Level Too Low' ~ 'Gearoil Level Too Low',
+                                    merged_data$Error_Description == 'Converter Tripped, Auto Start' ~ 'Converter Tripped, Auto Start',
+                                    merged_data$Error_Description == 'Mainbreaker Cut Out' ~ 'Mainbreaker Cut Out',
+                                    merged_data$Error_Description == 'Grid Filter Current Overload' ~ 'Grid Filter Current Overload',
+                                    merged_data$Error_Description == 'Osc. In Gen Speed' ~ 'Osc. In Gen Speed',
+                                    merged_data$Error_Description == 'Slip Ring Error' ~ 'Slip Ring Error',
+                                    merged_data$Error_Description == 'Genrpm/Srsg Speed Error' ~ 'Genrpm/Srsg Speed Error',
+                                    TRUE ~ "Not an Error")
+
+fault = subset(merged_data, select=c(Turbine_id, interval, isfailure, failuretype))
+summary(fault)
+
+fault$interval = ymd_hms(fault$interval)
+fault$interval = round_date(fault$interval, unit = "10 minutes")
+fault = fault %>% group_by(Turbine_id, interval, failuretype) %>% summarize(fault = max(isfailure))
+summary(fault)
+
+
+agg <- read.csv("Aggregated_Data.csv")
+agg$interval = ymd_hms(agg$interval)
+
+
+list_df = list(agg, fault)
+new <- list_df %>% reduce(full_join, by = c("Turbine_id", "interval"))
+fwrite(new, file = 'C:/Users/benja/OneDrive - Drake University/Drake University Semester 8/STAT 190/clean_data/Aggregated_Data_Fault.csv')
+
+new$fault = ifelse(is.na(new$fault),0,new$fault)
+new$failuretype = ifelse(is.na(new$failuretype),'Not an Error',new$failuretype)
 
 
 
