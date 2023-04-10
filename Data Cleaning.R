@@ -35,6 +35,7 @@ read_sensor_data = function(folder, start_index) {
 
 
 ## DATA CLEANING (10 minutes) -----
+# Creating appropriate columns and merging files
 
 windspeed = read_sensor_data("Class Data/Windspeed", 2)
 colnames(windspeed) = c("Turbine_id", "Time_Stamp", "Date", 'Measurement', "Type")
@@ -75,8 +76,6 @@ ambient_temp <- ambient_temp %>% group_by(Turbine_id, interval) %>% summarize(am
 
 
 
-
-
 gearbox_hs_bearing_temp_1 = read_sensor_data("Class Data/Gearbox HS Bearing Temp Part 1", 2)
 colnames(gearbox_hs_bearing_temp_1) = c("Turbine_id", "Time_Stamp", "Date", 'Measurement', 'Type')
 gearbox_hs_bearing_temp_1$Time_Stamp = ymd_hms(gearbox_hs_bearing_temp_1$Time_Stamp)
@@ -103,8 +102,6 @@ gearbox_hs_bearing_temp_all = rbind(gearbox_hs_bearing_temp_1, gearbox_hs_bearin
 gearbox_hs_bearing_temp_all <- gearbox_hs_bearing_temp_all %>% group_by(Turbine_id, interval) %>% summarize(gearbox_hs_bearing_temp_ = mean(gearbox_hs_bearing_temp_))
 
 
-
-
 gearbox_ims_bearing_1 = read_sensor_data("Class Data/Gearbox IMS Bearing 1", 2)
 colnames(gearbox_ims_bearing_1) = c("Turbine_id", "Time_Stamp", "Date", 'Measurement', 'Type')
 gearbox_ims_bearing_1$Time_Stamp = ymd_hms(gearbox_ims_bearing_1$Time_Stamp)
@@ -121,8 +118,6 @@ gearbox_ims_bearing_2 <- gearbox_ims_bearing_2 %>% group_by(Turbine_id, interval
 
 gearbox_ims_bearing_all = rbind(gearbox_ims_bearing_1, gearbox_ims_bearing_2)
 gearbox_ims_bearing_all <- gearbox_ims_bearing_all %>% group_by(Turbine_id, interval) %>% summarize(gearbox_ims_bearing_ = mean(gearbox_ims_bearing_))
-
-
 
 
 
