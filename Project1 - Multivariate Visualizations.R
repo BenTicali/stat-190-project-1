@@ -88,4 +88,11 @@ ggplot(data = subset(new, Turbine_id == 'Turbine 7')) +
    facet_wrap(~fault)
 
 
+ggplot(data = subset(new, Turbine_id == 'Turbine 7')) + 
+   geom_point(aes(x = generator_rpm_, y = gearbox_hs_bearing_temp_, color = failuretype)) +
+   facet_wrap(~fault) +
+   labs(x = "Generator RPM", y = "Gearbox HS Bearing Temperature (Celcius)") +
+   ggtitle("Turbine 7: Gearbox HS Bearing Temperature by Generator RPM") +
+   scale_color_brewer(palette = "Set2")
+
 
