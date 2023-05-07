@@ -1,0 +1,205 @@
+#clear your workspace
+rm(list = ls())
+#only run once, then not again
+
+#install.packages('randomForest')
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(pROC)
+library(topicmodels) 
+library(reshape2)
+library(randomForest)
+library(RColorBrewer)
+
+
+# INITIAL READ IN AND CLEANING------------------------------
+
+#read in data
+mdata <- read.csv("Batch2_1Hour_time_to_wo_filled_anomaly_lag.csv", stringsAsFactors = TRUE)
+
+
+
+#code given by another group to create general fault indicator variable
+
+not_actually_a_fault_index <- grep('Stopped Due To Power Up Delay|Local, Ad-Hoc / Repair Work|Stopped, Untwisting Cables|Local, Scheduled Service Work', mdata$Error_Description)
+mdata <- mdata[-c(not_actually_a_fault_index),]
+nofaultindex <- grep('Ambient Temp Sensor Error|Local, Ad-Hoc / Repair Work|Manual Idle Stop|Manual Idle Stop - Yawing|Manual Stop|No Valid Wind Data|NA|Remote Stop - Oem|Remote Stop - Owner|Rpm Sensor Error|Stopped, Untwisting Cables', mdata$Error_Description)
+mdata$isfailure[nofaultindex] <- 0
+mdata$Error_Origin[nofaultindex] <- "No Fault"
+mdata$fault_indicator = ifelse(mdata$Error_Description == "", "No Fault","Fault")
+
+
+#Exploratory Analysis Plots:
+
+# This plot shows the distribution of "important/costly faults" by average active power and average gearbox
+# oil temperature
+
+ggplot(data = subset(mdata, Turbine_id == 'Turbine 30')) + 
+  geom_point(aes(x = lag_avg_active_power, y = lag_avg_gearbox_oil_temp, color = isfailure)) +
+  theme_bw() +
+  facet_wrap(~isfailure) +
+  labs(x = "Active Power (kW)", y = "Average Gearbox Oil Temperature (Celcius)") +
+  ggtitle("Turbine 30: Oil Temperature by Active Power Level")
+
+
+
+# This plot shows distribution of general faults by average generator rpm and average gearbox hs 
+# bearing temperature
+
+ggplot(data = subset(mdata, Turbine_id == 'Turbine 30')) + 
+  geom_point(aes(x = lag_avg_generator_rpm, y = lag_avg_gearbox_hs_bearing_temp, color = fault_indicator)) +
+  facet_wrap(~fault_indicator) +
+  labs(x = "Generator RPM", y = "Gearbox HS Bearing Temperature (Celcius)") +
+  ggtitle("Turbine 30: Gearbox HS Bearing Temperature by Generator RPM") +
+  scale_color_brewer(palette = "Paired")
+
+
+
+# This plot shows distribution of general faults by average active power and average hydraulic pressure
+
+ggplot(data = subset(mdata, Turbine_id == 'Turbine 30')) + 
+  geom_point(aes(x = lag_avg_active_power, y = lag_avg_hydraulic_pressure, color = fault_indicator)) +
+  facet_wrap(~fault_indicator) +
+  labs(x = " Average Active Power", y = "Average Hydraulic Pressure") +
+  ggtitle("Turbine 30: Hydraulic Pressure by Active Power") +
+  scale_color_brewer(palette = "Paired")
+
+
+# Here we filter out all variables that are not lagged variables, as well as the unnecessary
+# variables like Error Description, Fault Code, and Error Origin
+
+mdata = mdata[,-c(2:39,41,45:47,69:72)]
+
+
+
+# Here we handle NAs and make the response variable a factor
+
+mdata = na.omit(mdata)
+mdata$fault_indicator = as.factor(mdata$fault_indicator)
+
+
+
+
+
+#MAKING THE RANDOM FOREST--------------------
+
+
+#split data into training and testing data sets
+#'set the seed' 
+RNGkind(sample.kind = "default")
+set.seed(2291352)
+#choose indices for training set
+train.idx <- sample(x = 1:nrow(mdata), .8*nrow(mdata))
+#make training data frame
+train.df <- mdata[train.idx,]
+#make testing data frame
+test.df <- mdata[-train.idx,]
+
+
+
+# This is our initial random forest with an mtry based on a rough square root of the number
+# of variables.
+
+myforest <- randomForest(fault_indicator ~Turbine_id + time_until_wo + 
+                           lag_avg_active_power + lag_max_active_power + lag_min_active_power + lag_avg_gearbox_oil_temp + 
+                           lag_max_gearbox_oil_temp + lag_min_gearbox_oil_temp + lag_avg_generator_rpm + 
+                           lag_max_generator_rpm + lag_min_generator_rpm + lag_avg_hydraulic_pressure + 
+                           lag_max_hydraulic_pressure + lag_min_hydraulic_pressure + lag_avg_gearbox_hs_bearing_temp + 
+                           lag_max_gearbox_hs_bearing_temp + lag_min_gearbox_hs_bearing_temp + 
+                           lag_avg_gearbox_ims_bearing_1 + lag_max_gearbox_ims_bearing_1 + 
+                           lag_min_gearbox_ims_bearing_1 + lag_avg_gearbox_ims_bearing_2 + 
+                           lag_max_gearbox_ims_bearing_2 + lag_min_gearbox_ims_bearing_2 + 
+                           lag_avg_ambient_temp + lag_max_ambient_temp + lag_min_ambient_temp + lag_anomaly, #remember dangers here
+                         data = train.df,
+                         ntree = 1000, 
+                         mtry = 5,
+                         importance = TRUE)
+
+# The code below creates a loop to run random forests with mtry's of 2 through 7
+# We then plot these results for their Out of Bag Errors
+
+mtry <- c(2:7)
+keeps <- data.frame(m = rep(NA, length(mtry)),
+                    OOB_error_rate = rep(NA, length(mtry)))
+plot(myforest)
+for(idx in 1:length(mtry)){
+  print(paste0("Fitting m = ", mtry[idx]))
+  
+  tempforest <- randomForest(fault_indicator ~Turbine_id + time_until_wo + 
+                               lag_avg_active_power + lag_max_active_power + lag_min_active_power + lag_avg_gearbox_oil_temp + 
+                               lag_max_gearbox_oil_temp + lag_min_gearbox_oil_temp + lag_avg_generator_rpm + 
+                               lag_max_generator_rpm + lag_min_generator_rpm + lag_avg_hydraulic_pressure + 
+                               lag_max_hydraulic_pressure + lag_min_hydraulic_pressure + lag_avg_gearbox_hs_bearing_temp + 
+                               lag_max_gearbox_hs_bearing_temp + lag_min_gearbox_hs_bearing_temp + 
+                               lag_avg_gearbox_ims_bearing_1 + lag_max_gearbox_ims_bearing_1 + 
+                               lag_min_gearbox_ims_bearing_1 + lag_avg_gearbox_ims_bearing_2 + 
+                               lag_max_gearbox_ims_bearing_2 + lag_min_gearbox_ims_bearing_2 + 
+                               lag_avg_ambient_temp + lag_max_ambient_temp + lag_min_ambient_temp + lag_anomaly,
+                             data = train.df,
+                             ntree = 1000,
+                             mtry = mtry[idx])
+  keeps[idx, "m"] <- mtry[idx]
+  keeps[idx, "OOB_error_rate"] <- mean(predict(tempforest) != train.df$fault_indicator)
+}
+
+
+# The below code shows that 2,3, and 6 have the lowest OOB error rate, so we will pick one
+# of these three mtry's
+
+ggplot(data = keeps) +
+  geom_line(aes(x=m, y = OOB_error_rate)) +
+  scale_x_continuous(breaks = c(2:7)) +
+  labs(x = "m (mtry): # of x variables sampled",
+       y = "OOB Error Rate")
+
+
+
+# After the above code is run, we pick our mtry for our final forest and run the final random forest
+# with an mtry of 6
+
+final_forest <- randomForest(fault_indicator ~Turbine_id + time_until_wo + 
+                               lag_avg_active_power + lag_max_active_power + lag_min_active_power + lag_avg_gearbox_oil_temp + 
+                               lag_max_gearbox_oil_temp + lag_min_gearbox_oil_temp + lag_avg_generator_rpm + 
+                               lag_max_generator_rpm + lag_min_generator_rpm + lag_avg_hydraulic_pressure + 
+                               lag_max_hydraulic_pressure + lag_min_hydraulic_pressure + lag_avg_gearbox_hs_bearing_temp + 
+                               lag_max_gearbox_hs_bearing_temp + lag_min_gearbox_hs_bearing_temp + 
+                               lag_avg_gearbox_ims_bearing_1 + lag_max_gearbox_ims_bearing_1 + 
+                               lag_min_gearbox_ims_bearing_1 + lag_avg_gearbox_ims_bearing_2 + 
+                               lag_max_gearbox_ims_bearing_2 + lag_min_gearbox_ims_bearing_2 + 
+                               lag_avg_ambient_temp + lag_max_ambient_temp + lag_min_ambient_temp + lag_anomaly,
+                             data = train.df,
+                             ntree = 1000,
+                             mtry = 6, #based on tuning above
+                             importance = TRUE)
+
+
+
+#PLOTTING FINAL RESULTS--------------
+
+
+
+# The code below makes an ROC curve to show the AUC and specificity and sensitivity
+
+pi_hat <- predict(final_forest, test.df, type = "prob")[,"Fault"]
+
+
+rocCurve <- roc(respons = test.df$fault_indicator,
+                predictor = pi_hat,
+                levels = c("No Fault","Fault"))
+
+plot(rocCurve, print.thres = TRUE, print.auc = TRUE)
+
+
+pi_star <- coords(rocCurve, "best", ret = "threshold")$threshold[1]
+test.df$forest_pred <- as.factor(ifelse(pi_hat > pi_star, "Fault", "No Fault"))
+
+
+# Confusion Matrix
+
+table(test.df$fault_indicator, test.df$forest_pred)
+
+
+# This creates a variable importance plot
+
+varImpPlot(final_forest, type = 1)
