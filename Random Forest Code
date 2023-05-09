@@ -28,6 +28,9 @@ nofaultindex <- grep('Ambient Temp Sensor Error|Local, Ad-Hoc / Repair Work|Manu
 mdata$isfailure[nofaultindex] <- 0
 mdata$Error_Origin[nofaultindex] <- "No Fault"
 mdata$fault_indicator = ifelse(mdata$Error_Description == "", "No Fault","Fault")
+mdata$isfailure = ifelse(mdata$isfailure == 1, "Failure", "No Failure")
+mdata$isfailure[is.na(mdata$isfailure)] <- "No Failure"
+
 
 
 #Exploratory Analysis Plots:
@@ -35,7 +38,7 @@ mdata$fault_indicator = ifelse(mdata$Error_Description == "", "No Fault","Fault"
 # This plot shows the distribution of "important/costly faults" by average active power and average gearbox
 # oil temperature
 
-ggplot(data = subset(mdata, Turbine_id == 'Turbine 30')) + 
+ggplot(data = subset(mdata, Turbine_id == 'Turbine 30', isfailure = "Failure")) + 
   geom_point(aes(x = lag_avg_active_power, y = lag_avg_gearbox_oil_temp, color = isfailure)) +
   theme_bw() +
   facet_wrap(~isfailure) +
